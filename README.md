@@ -1,4 +1,4 @@
-# Otimizaçào de campanhas com modelo hierárquico bayesiano
+# Bayesian Ad Budget Optimization com Modelo Hierárquico
 
 <p align="justify">
 
@@ -20,8 +20,8 @@ Nos primeiros dias de execução existe pouca informação disponível. Como con
 
 Isso pode levar a duas decisões ruins:
 
-* escalar campanhas aparentemente excelentes que tiveram apenas sorte;
-* pausar campanhas promissoras que tiveram poucos eventos.
+- escalar campanhas aparentemente excelentes que tiveram apenas sorte;
+- pausar campanhas promissoras que tiveram poucos eventos.
 
 O objetivo deste projeto é utilizar um modelo probabilístico para estimar a verdadeira taxa de conversão de cada campanha considerando toda a informação disponível na conta.
 
@@ -35,69 +35,83 @@ O objetivo deste projeto é utilizar um modelo probabilístico para estimar a ve
 
 O projeto busca:
 
-* modelar campanhas utilizando uma abordagem Bayesiana Hierárquica;
-* reduzir a variabilidade causada por pequenas amostras;
-* estimar intervalos de credibilidade para cada campanha;
-* calcular probabilidades diretamente interpretáveis para decisões de negócio;
-* transformar estimativas estatísticas em ações operacionais.
+- Modelar campanhas utilizando uma abordagem Bayesiana Hierárquica.
+
+- Reduzir a variabilidade causada por pequenas amostras.
+
+- Estimar intervalos de credibilidade para cada campanha.
+
+- Calcular probabilidades diretamente interpretáveis para decisões de negócio.
+
+- Transformar estimativas estatísticas em ações operacionais.
 
 </p>
 
 ---
 
-# 3. Arquitetura
+# 3. Arquitetura do Projeto
 
 ```text
-Dados das campanhas
-        │
-        ▼
-Pré-processamento
-        │
-        ▼
-Modelo Beta-Binomial Hierárquico
-(PyMC + MCMC)
-        │
-        ▼
-Distribuições Posteriores
-        │
-        ▼
-Probabilidade de superar a média
-        │
-        ▼
-ESCALAR
-MANTER
-PAUSAR
+                  Dados das Campanhas
+                          │
+                          ▼
+                Pré-processamento
+                          │
+                          ▼
+          Modelo Beta-Binomial Hierárquico
+                  (PyMC + MCMC)
+                          │
+                          ▼
+            Distribuições Posteriores
+                          │
+                          ▼
+        Probabilidade de Superar a Média
+                          │
+                          ▼
+        ESCALAR | MANTER | PAUSAR
 ```
 
 ---
 
-# 4. Base de Dados
+# 4. Fundamentação Estatística
 
 <p align="justify">
 
-Cada campanha possui:
+O projeto utiliza um **Modelo Beta-Binomial Hierárquico**, amplamente empregado em problemas de inferência Bayesiana envolvendo proporções.
 
-* quantidade de impressões;
-* quantidade de cliques;
-* taxa observada.
+Cada campanha possui uma taxa de conversão desconhecida, modelada por uma distribuição Beta. Ao mesmo tempo, todas as campanhas compartilham hiperparâmetros comuns que representam o comportamento médio da conta.
 
-O modelo considera que todas as campanhas pertencem à mesma conta publicitária, compartilhando uma distribuição global de conversão.
+Essa estrutura permite que campanhas com poucas observações sejam naturalmente aproximadas da média global, reduzindo estimativas extremas produzidas apenas pelo acaso.
+
+Esse fenômeno é conhecido como **Shrinkage Bayesiano**, uma das principais vantagens dos modelos hierárquicos.
 
 </p>
 
 ---
 
-# 5. Modelo Estatístico
+# 5. Modelo Matemático
 
 <p align="justify">
 
-O projeto utiliza um modelo **Beta-Binomial Hierárquico**.
+Para cada campanha \(i\):
 
-Os hiperparâmetros aprendem automaticamente qual é a taxa típica da conta.
+\[
+Clicks_i \sim Binomial(Impressions_i,\theta_i)
+\]
 
-Cada campanha possui sua própria distribuição de probabilidade, sendo estimada a partir da informação individual e também da informação compartilhada entre todas as campanhas.
+onde
 
-Essa estrutura produz o conhecido efeito de **shrinkage**, reduzindo estimativas exageradas provenientes de campanhas com poucas observações.
+\[
+\theta_i \sim Beta(\alpha,\beta)
+\]
+
+e os hiperparâmetros são estimados a partir dos próprios dados:
+
+\[
+\alpha,\beta \sim Exponential(1)
+\]
+
+Após a inferência MCMC obtém-se a distribuição posterior de cada taxa de conversão.
 
 </p>
 
@@ -126,7 +140,7 @@ with pm.Model() as modelo_ads:
     )
 
     trace = pm.sample(
-        2000,
+        draws=2000,
         tune=1000,
         target_accept=0.9,
         random_seed=42
@@ -135,17 +149,37 @@ with pm.Model() as modelo_ads:
 
 ---
 
-# 7. Comparação com Estatística Clássica (statsmodels)
+# 7. Diagnóstico do Modelo
 
 <p align="justify">
 
-Como referência, uma abordagem clássica pode ser implementada utilizando o **statsmodels** para estimar a taxa de conversão individual e seus respectivos intervalos de confiança.
+Após a inferência são avaliados indicadores de convergência, como:
 
-Entretanto, cada campanha é tratada de forma independente, sem compartilhar informação entre campanhas.
+- R-hat próximo de 1;
+
+- Effective Sample Size (ESS);
+
+- Trace Plots;
+
+- Distribuições posteriores.
+
+Essas análises garantem que o algoritmo MCMC convergiu adequadamente para a distribuição posterior.
 
 </p>
 
-### Código principal (statsmodels)
+---
+
+# 8. Comparação com Estatística Clássica (statsmodels)
+
+<p align="justify">
+
+Como referência, uma abordagem clássica pode ser construída utilizando o pacote **statsmodels**.
+
+Nesse caso, cada campanha é analisada individualmente através de um intervalo de confiança para proporções, sem compartilhar informação com as demais campanhas.
+
+</p>
+
+### Código Principal
 
 ```python
 from statsmodels.stats.proportion import proportion_confint
@@ -169,94 +203,125 @@ df[["ic_low", "ic_high"]] = df.apply(
 
 <p align="justify">
 
-Enquanto o método clássico fornece estimativas independentes para cada campanha, o modelo Bayesiano Hierárquico reduz naturalmente a instabilidade das campanhas com poucas observações ao compartilhar informação entre todos os grupos.
+Embora o método clássico produza intervalos de confiança adequados para cada campanha individualmente, ele não compartilha informação entre campanhas.
+
+Como consequência, campanhas com poucas observações continuam apresentando elevada variabilidade.
+
+Já o modelo Bayesiano Hierárquico utiliza informação global da conta para reduzir essa instabilidade.
 
 </p>
 
 ---
 
-# 8. Resultados
+# 9. Comparação entre Abordagens
+
+| Característica | Estatística Clássica | Bayesiano Hierárquico |
+|----------------|----------------------|------------------------|
+| Compartilha informação | Não | Sim |
+| Funciona bem com poucos dados | Limitado | Sim |
+| Intervalo de confiança | Sim | Intervalo de credibilidade |
+| Probabilidade direta de ser melhor | Não | Sim |
+| Shrinkage | Não | Sim |
+| Distribuição posterior | Não | Sim |
+
+---
+
+# 10. Visualizações Produzidas
 
 <p align="justify">
 
-Após a inferência MCMC são obtidas:
+O notebook gera visualizações que facilitam a interpretação dos resultados, incluindo:
 
-* média posterior da taxa de conversão;
-* intervalo de credibilidade;
-* distribuição completa da taxa;
-* probabilidade de superar a média global.
+- gráfico de efeito de shrinkage;
 
-Essas informações permitem substituir decisões baseadas apenas na taxa observada por decisões probabilísticas.
+- comparação entre taxa observada e taxa posterior;
+
+- intervalos de credibilidade;
+
+- trace plots;
+
+- distribuições posteriores;
+
+- probabilidade de cada campanha superar a média global.
 
 </p>
 
 ---
 
-# 9. Regra de Negócio
+# 11. Decisão de Negócio
 
 <p align="justify">
 
-Cada campanha recebe uma probabilidade de possuir desempenho superior à média global da conta.
+Após estimar a distribuição posterior de cada campanha, calcula-se a probabilidade de sua taxa de conversão ser superior à média global da conta.
 
-Com base nessa probabilidade, o sistema classifica automaticamente cada campanha em uma das seguintes ações:
+Com base nessa probabilidade, define-se automaticamente uma ação operacional.
 
-* ESCALAR;
-* MANTER E COLETAR MAIS DADOS;
-* PAUSAR.
+Exemplo:
 
-Essa estratégia reduz decisões precipitadas e melhora a alocação do orçamento.
+- Probabilidade superior a 80% → **ESCALAR**
+
+- Probabilidade inferior a 20% → **PAUSAR**
+
+- Demais casos → **MANTER E COLETAR MAIS DADOS**
+
+Essa estratégia substitui decisões baseadas apenas na taxa observada por decisões fundamentadas em probabilidade.
 
 </p>
 
 ---
 
-# 10. Comparação entre Abordagens
+# 12. Tecnologias Utilizadas
 
-| Característica                     | Estatística Clássica (statsmodels) | Bayesiano Hierárquico      |
-| ---------------------------------- | ---------------------------------- | -------------------------- |
-| Campanhas independentes            | Sim                                | Não                        |
-| Compartilha informação             | Não                                | Sim                        |
-| Funciona bem com poucos dados      | Limitado                           | Sim                        |
-| Intervalo de confiança             | Sim                                | Intervalo de credibilidade |
-| Probabilidade direta de ser melhor | Não                                | Sim                        |
-| Efeito de shrinkage                | Não                                | Sim                        |
+- Python
 
----
+- PyMC
 
-# 11. Tecnologias
+- ArviZ
 
-* Python
-* PyMC
-* ArviZ
-* NumPy
-* Pandas
-* Matplotlib
-* statsmodels
+- NumPy
+
+- Pandas
+
+- Matplotlib
+
+- statsmodels
 
 ---
 
-# 12. Aplicações
+# 13. Aplicações
 
 <p align="justify">
 
-A metodologia pode ser aplicada em diversos problemas de negócio, incluindo:
+A metodologia apresentada pode ser utilizada em diversos problemas reais, incluindo:
 
-* otimização de campanhas de marketing;
-* testes de produtos digitais;
-* análise de conversão por país;
-* comparação entre vendedores;
-* avaliação de desempenho de lojas;
-* monitoramento de modelos de Machine Learning.
+- otimização de campanhas de marketing;
+
+- testes A/B com múltiplas variantes;
+
+- recomendação de produtos;
+
+- comparação entre vendedores;
+
+- análise de desempenho de lojas;
+
+- monitoramento de modelos de Machine Learning;
+
+- experimentação online;
+
+- sistemas de recomendação.
 
 </p>
 
 ---
 
-# 13. Conclusão
+# 14. Conclusão
 
 <p align="justify">
 
-Este projeto demonstra como modelos Bayesianos Hierárquicos podem produzir estimativas mais robustas do que abordagens clássicas quando existem múltiplos grupos com diferentes quantidades de dados. Ao incorporar a incerteza diretamente na tomada de decisão, o modelo reduz o risco de escalar campanhas devido ao acaso ou interromper campanhas promissoras prematuramente. Além de apresentar uma aplicação prática de Estatística Bayesiana, o projeto evidencia competências em modelagem probabilística, inferência por MCMC, comunicação de resultados e transformação de análises estatísticas em decisões de negócio orientadas por dados.
+Este projeto demonstra como modelos Bayesianos Hierárquicos podem produzir estimativas significativamente mais robustas do que abordagens clássicas quando existem múltiplos grupos com diferentes quantidades de dados.
+
+Ao incorporar explicitamente a incerteza na tomada de decisão, o modelo reduz o risco de escalar campanhas devido ao acaso ou interromper campanhas promissoras prematuramente.
+
+Além de apresentar uma aplicação prática de Estatística Bayesiana, o projeto evidencia conhecimentos em modelagem probabilística, inferência por Cadeias de Markov Monte Carlo (MCMC), diagnóstico de convergência, comunicação de resultados e utilização de modelos estatísticos para suporte à decisão em problemas reais de negócio.
 
 </p>
-
