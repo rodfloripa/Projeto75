@@ -1,4 +1,4 @@
-# Bayesian Ad Budget Optimization com Modelo Hierárquico
+# Otimização de campanhas com modelo hierárquico bayesiano
 
 <p align="justify">
 
