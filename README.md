@@ -212,7 +212,9 @@ df[["ic_low", "ic_high"]] = df.apply(
 | J | 1000 | 0.060 | 0.060 | 0.00 | PAUSAR |
 
 <p align="justify">Essa estratégia reduz decisões precipitadas e melhora a alocação do orçamento publicitário.</p>
-
+<p align="center">
+  <img src="https://github.com/rodfloripa/Projeto75/blob/main/fig.png">
+</p>
 ---
 
 # 12. Tecnologias Utilizadas
