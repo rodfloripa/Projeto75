@@ -188,15 +188,28 @@ df[["ic_low", "ic_high"]] = df.apply(
 
 ---
 
-# 11. Decisão de Negócio
+# 11. Resultados
 
 <p align="justify">Após estimar a distribuição posterior de cada campanha, calcula-se a probabilidade de sua taxa de conversão ser superior à média global da conta.</p>
 
-<p align="justify">Essa probabilidade é utilizada para transformar diretamente o resultado estatístico em uma decisão operacional.</p>
+<p align="justify">Essa probabilidade P(Melhor que Média) é utilizada para transformar diretamente o resultado estatístico em uma decisão operacional.</p>
 
 - Probabilidade superior a 80% → **ESCALAR**
 - Probabilidade inferior a 20% → **PAUSAR**
 - Demais casos → **MANTER E COLETAR MAIS DADOS**
+
+| Campanha | Impressões | Taxa Bruta | Taxa MCMC | P(Melhor que Média) | Ação |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| C | 2 | 0.500 | 0.271 | 0.82 | ESCALAR |
+| E | 10 | 0.200 | 0.187 | 0.78 | MANTER E COLETAR |
+| H | 8 | 0.125 | 0.138 | 0.57 | MANTER E COLETAR |
+| D | 5 | 0.000 | 0.073 | 0.25 | MANTER E COLETAR |
+| G | 50 | 0.060 | 0.068 | 0.15 | PAUSAR |
+| A | 5000 | 0.060 | 0.060 | 0.00 | PAUSAR |
+| B | 8000 | 0.056 | 0.056 | 0.00 | PAUSAR |
+| F | 300 | 0.050 | 0.051 | 0.00 | PAUSAR |
+| I | 700 | 0.057 | 0.058 | 0.00 | PAUSAR |
+| J | 1000 | 0.060 | 0.060 | 0.00 | PAUSAR |
 
 <p align="justify">Essa estratégia reduz decisões precipitadas e melhora a alocação do orçamento publicitário.</p>
 
